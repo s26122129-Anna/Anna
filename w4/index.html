@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>朋友對我的動態留言牆 📜</title>
+  <!-- 載入復古打字機字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ==========================================
+       1. 全局變數與復古視覺風格 (Retro Vintage)
+       ========================================== */
+    :root {
+      --bg-color: #f4ebd9;
+      --card-bg: #fffdf9;
+      --border-color: #4a3b32;
+      --accent-color: #a73c2c; /* 復古紅/郵戳紅 */
+      --secondary-color: #d9b48f;
+      --text-main: #2b211b;
+      --text-muted: #7c6859;
+      --shadow-vintage: 4px 4px 0px #4a3b32;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Serif TC', 'Courier Prime', Georgia, serif;
+      background-color: var(--bg-color);
+      /* 模擬復古紙張紋理效果 */
+      background-image: 
+        radial-gradient(#4a3b32 0.75px, transparent 0.75px),
+        radial-gradient(#4a3b32 0.75px, #f4ebd9 0.75px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2.5rem 1rem;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* 頁面大標題 (復古報章風格) */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      border-bottom: 3px double var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    .retro-badge {
+      display: inline-block;
+      background: var(--accent-color);
+      color: #fff;
+      font-family: 'Courier Prime', monospace;
+      font-size: 0.8rem;
+      padding: 4px 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: 1px solid var(--border-color);
+      margin-bottom: 0.8rem;
+      box-shadow: 2px 2px 0px var(--border-color);
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--border-color);
+      margin-bottom: 0.5rem;
+      text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.8);
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-family: 'Courier Prime', monospace;
+      letter-spacing: 1px;
+    }
+
+    /* ==========================================
+       2. 黑膠唱片復古載入動畫 (Loading Animation)
+       ========================================== */
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem 0;
+    }
+
+    .vinyl-record {
+      width: 70px;
+      height: 70px;
+      background: radial-gradient(circle, #333 15%, var(--accent-color) 16%, var(--accent-color) 30%, #111 31%);
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      box-shadow: 0 0 0 4px #111, var(--shadow-vintage);
+      animation: spin 2s linear infinite;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .vinyl-record::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 8px;
+      background: var(--bg-color);
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+    }
+
+    .loading-text {
+      font-family: 'Courier Prime', monospace;
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+      color: var(--border-color);
+      font-weight: 700;
+      animation: blink 1.2s infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* ==========================================
+       3. CSS 瀑布流排版 (Masonry Layout)
+       ========================================== */
+    .masonry-grid {
+      column-count: 3;
+      column-gap: 1.8rem;
+      display: none; /* 資料載入完畢後由 JS 切換顯示 */
+    }
+
+    /* 響應式裝置調整 */
+    @media (max-width: 900px) {
+      .masonry-grid { column-count: 2; }
+    }
+    @media (max-width: 600px) {
+      .masonry-grid { column-count: 1; }
+    }
+
+    /* ==========================================
+       4. 復古郵票/明信片卡片美化設計
+       ========================================== */
+    .card {
+      break-inside: avoid;
+      margin-bottom: 1.8rem;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 2px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-vintage);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      position: relative;
+      background-image: linear-gradient(to bottom, rgba(217, 180, 143, 0.05) 0%, transparent 100%);
+    }
+
+    .card:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 7px 7px 0px var(--border-color);
+    }
+
+    /* 角落郵票點綴效果 */
+    .card::before {
+      content: 'POST';
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-family: 'Courier Prime', monospace;
+      font-size: 0.65rem;
+      color: var(--accent-color);
+      border: 1px dashed var(--accent-color);
+      padding: 2px 4px;
+      transform: rotate(5deg);
+      opacity: 0.7;
+    }
+
+    .card-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px dashed var(--border-color);
+    }
+
+    .card-author {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .card-author::before {
+      content: '✍';
+      font-size: 0.9rem;
+    }
+
+    .card-time {
+      font-family: 'Courier Prime', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .card-body {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--text-main);
+      white-space: pre-wrap; /* 自動保留留言中的換行 */
+      word-break: break-word;
+    }
+
+    /* 錯誤提醒框 */
+    .error-msg {
+      text-align: center;
+      color: var(--accent-color);
+      padding: 2.5rem;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      box-shadow: var(--shadow-vintage);
+      font-family: 'Courier Prime', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="retro-badge">MEMORIES & NOTES</div>
+      <h1>動態留言牆</h1>
+      <p>— 朋友留下的秘密與時光筆記 —</p>
+    </header>
+
+    <!-- 酷炫黑膠唱片載入動畫 -->
+    <div id="loading">
+      <div class="vinyl-record"></div>
+      <div class="loading-text">讀取留言中...</div>
+    </div>
+
+    <!-- 瀑布流留言牆 -->
+    <main id="wall" class="masonry-grid"></main>
+  </div>
+
+  <script>
+    // 原始網址轉換：自動將pubhtml轉為CSV發布網址
+    const RAW_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQHIJE7WpzjhzWo2x6SQzPvHvqdHI7KfWZ3ESI0uobqhCZa2uPPipLVylj92vttTzzc7raqWsEJMr6Q/pubhtml';
+    const CSV_URL = RAW_URL.replace(/\/pubhtml$/, '/pub?output=csv');
+
+    /**
+     * 手寫狀態機 CSV 解析器（精準處理雙引號、欄位內逗號與斷行）
+     */
+    function parseCSV(text) {
+      const lines = [];
+      let row = [];
+      let currentToken = '';
+      let insideQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"') {
+          if (insideQuotes && nextChar === '"') {
+            currentToken += '"';
+            i++;
+          } else {
+            insideQuotes = !insideQuotes;
+          }
+        } else if (char === ',' && !insideQuotes) {
+          row.push(currentToken.trim());
+          currentToken = '';
+        } else if ((char === '\r' || char === '\n') && !insideQuotes) {
+          if (char === '\r' && nextChar === '\n') {
+            i++;
+          }
+          row.push(currentToken.trim());
+          if (row.some(field => field !== '')) {
+            lines.push(row);
+          }
+          row = [];
+          currentToken = '';
+        } else {
+          currentToken += char;
+        }
+      }
+
+      if (currentToken || row.length > 0) {
+        row.push(currentToken.trim());
+        if (row.some(field => field !== '')) {
+          lines.push(row);
+        }
+      }
+
+      return lines;
+    }
+
+    /**
+     * 防止 XSS 攻擊
+     */
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    /**
+     * 讀取並動態渲染留言
+     */
+    async function fetchAndRenderMessages() {
+      const loadingEl = document.getElementById('loading');
+      const wallEl = document.getElementById('wall');
+
+      try {
+        const response = await fetch(CSV_URL);
+        if (!response.ok) {
+          throw new Error(`網路連線錯誤 (狀態碼: ${response.status})`);
+        }
+
+        const csvText = await response.text();
+        const parsedRows = parseCSV(csvText);
+
+        // 移除第一列標題，轉成資料物件陣列 (0:時間戳記, 1:名字, 2:悄悄話)
+        const messages = parsedRows.slice(1).map(row => ({
+          timestamp: row[0] || '',
+          name: row[1] || '無名氏',
+          content: row[2] || ''
+        })).filter(msg => msg.content !== '');
+
+        wallEl.innerHTML = '';
+
+        if (messages.length === 0) {
+          wallEl.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 3rem; font-family:\'Courier Prime\', monospace;">[ 目前尚無任何留言記錄 ]</div>';
+        } else {
+          // 動態創建卡片
+          messages.forEach(msg => {
+            const card = document.createElement('article');
+            card.className = 'card';
+            card.innerHTML = `
+              <div class="card-header">
+                <span class="card-author">${escapeHTML(msg.name)}</span>
+                <time class="card-time">${escapeHTML(msg.timestamp)}</time>
+              </div>
+              <div class="card-body">${escapeHTML(msg.content)}</div>
+            `;
+            wallEl.appendChild(card);
+          });
+        }
+
+        // 隱藏 Loading，顯示留言牆
+        loadingEl.style.display = 'none';
+        wallEl.style.display = 'block';
+
+      } catch (error) {
+        console.error('Fetch error:', error);
+        loadingEl.style.display = 'none';
+        wallEl.style.display = 'block';
+        wallEl.innerHTML = `
+          <div class="error-msg">
+            ⚠️ 讀取失敗！請確認 Google 試算表已正確「發布至網路」並選擇 CSV 格式。<br>
+            <small style="margin-top: 0.5rem; display: block; opacity: 0.8;">錯誤細節: ${escapeHTML(error.message)}</small>
+          </div>
+        `;
+      }
+    }
+
+    // 頁面載入後自動執行
+    document.addEventListener('DOMContentLoaded', fetchAndRenderMessages);
+  </script>
+</body>
+</html>
