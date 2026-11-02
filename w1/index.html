@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>個人數位名片</title>
+  <style>
+    /* 全局設定：背景使用馬卡龍漸層色，並置中內容 */
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #ffd1dc 0%, #e0c3fc 50%, #8ec5fc 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* 名片卡片主體 */
+    .card {
+      background-color: rgba(255, 255, 255, 0.9);
+      width: 320px;
+      padding: 40px 30px;
+      border-radius: 24px;
+      text-align: center;
+      /* 柔和的微陰影效果 */
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    /* 圓形大頭貼 */
+    .avatar {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 20px;
+      /* 頭像外框與陰影 */
+      border: 4px solid #ffffff;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 姓名樣式 */
+    .name {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #4a4a4a;
+      font-weight: 700;
+    }
+
+    /* 自我介紹文字 */
+    .bio {
+      margin: 12px 0 28px 0;
+      font-size: 0.95rem;
+      color: #7a7a7a;
+      line-height: 1.6;
+    }
+
+    /* 按鈕容器 */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* 馬卡龍按鈕通用樣式 */
+    .btn {
+      display: block;
+      padding: 12px 20px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* 滑鼠懸停時微升起效果 */
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Instagram 按鈕（馬卡龍粉紫） */
+    .btn-instagram {
+      background-color: #ffb7b2;
+      color: #ffffff;
+    }
+
+    /* Email 按鈕（馬卡龍粉藍） */
+    .btn-email {
+      background-color: #b5ead7;
+      color: #4a4a4a;
+    }
+  </style>
+</head>
+<body>
+
+ <!-- 數位名片卡片塊 -->
+  <div class="card">
+    <!-- 1. 圓形大頭貼 (預設為預設照片，請替換 src 中的圖片網址) -->
+    <img class="avatar" src="https://i.postimg.cc/xCWPhqrF/IMG-1269-(1).png" alt="個人大頭貼">
+
+
+    <!-- 2. 姓名與自我介紹 -->
+    <h1 class="name">Anna</h1>
+    <p class="bio">你好！我是Anna，是一個ENFP的E人，但我是看人而E，喜歡講話聊天，可以多多跟我聊天喔!
+
+    <!-- 3. 按鈕區塊 -->
+    <div class="button-group">
+      <!-- 替換你的 Instagram 帳號網址 -->
+      <a href="https://instagram.com/your_username" target="_blank" class="btn btn-instagram">Instagram</a>
+      
+      <!-- 替換你的 Email 信箱 -->
+      <a href="mailto:26122129@gmail.com" class="btn btn-email">Email 聯絡我</a>
+    </div>
+  </div>
+
+</body>
+</html>
