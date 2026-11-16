@@ -1,0 +1,1067 @@
+<title>雲端心電感應 | CLOUD TELEPATHY</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        tactical: {
+                            bg: '#0b0c10',
+                            panel: '#1f2833',
+                            panelLight: '#26313f',
+                            accent: '#45a29e',
+                            cyan: '#66fcf1',
+                            text: '#c5c6c7',
+                            muted: '#88929b',
+                            danger: '#ff4d4d',
+                            warning: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Inter"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 全域背景與戰術網格紋理 */
+        body {
+            background-color: #0b0c10;
+            color: #c5c6c7;
+            background-image: 
+                linear-gradient(to right, rgba(69, 162, 158, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(69, 162, 158, 0.04) 1px, transparent 1px);
+            background-size: 36px 36px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 戰術邊框與微光效應 */
+        .tactical-panel {
+            background: rgba(31, 40, 51, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(69, 162, 158, 0.25);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+        }
+
+        .tactical-panel-glow {
+            border-color: rgba(102, 252, 241, 0.5);
+            box-shadow: 0 0 20px rgba(69, 162, 158, 0.15);
+        }
+
+        .tactical-input {
+            background-color: #0b0c10;
+            border: 1px solid rgba(69, 162, 158, 0.35);
+            color: #ffffff;
+            transition: all 0.25s ease;
+        }
+
+        .tactical-input:focus {
+            outline: none;
+            border-color: #66fcf1;
+            box-shadow: 0 0 0 2px rgba(102, 252, 241, 0.15);
+        }
+
+        /* 3D 翻牌核心樣式 */
+        .perspective-container {
+            perspective: 1200px;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+            transform-style: preserve-3d;
+        }
+
+        .flip-card.is-flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        /* 牌背：未開牌狀態 (預設正面朝向使用者 0deg) */
+        .flip-card-front {
+            background: linear-gradient(145deg, #161d26 0%, #0e1217 100%);
+            border: 1px solid rgba(69, 162, 158, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* 牌背加密幾何條紋 */
+        .classified-pattern {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                rgba(69, 162, 158, 0.05),
+                rgba(69, 162, 158, 0.05) 8px,
+                transparent 8px,
+                transparent 16px
+            );
+        }
+
+        /* 牌面：開牌後揭曉答案 (旋轉 180deg) */
+        .flip-card-back {
+            background: linear-gradient(160deg, #1f2833 0%, #131920 100%);
+            border: 1px solid #45a29e;
+            transform: rotateY(180deg);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 0 25px rgba(69, 162, 158, 0.18);
+        }
+
+        /* 默契最高一致答案高亮 */
+        .flip-card-back.match-highlight {
+            border-color: #66fcf1;
+            box-shadow: 0 0 28px rgba(102, 252, 241, 0.32);
+            background: linear-gradient(160deg, #1f3338 0%, #111b21 100%);
+        }
+
+        /* 自訂捲軸 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0c10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2c3947;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #45a29e;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-tactical-accent selection:text-tactical-bg flex flex-col">
+
+    <!-- 頂部戰術狀態導航列 -->
+    <header class="border-b border-tactical-accent/20 bg-tactical-bg/90 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+            <!-- 左側品牌識別 -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-tactical-panel border border-tactical-accent/50 flex items-center justify-center shadow-[0_0_12px_rgba(69,162,158,0.25)]">
+                    <svg class="w-5 h-5 text-tactical-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base sm:text-lg font-bold tracking-wider text-white">雲端心電感應</h1>
+                        <span class="hidden sm:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded bg-tactical-accent/15 text-tactical-cyan border border-tactical-accent/30">TELEPATHY v2.4</span>
+                    </div>
+                    <p class="text-[11px] font-mono text-tactical-muted tracking-widest hidden sm:block">TACTICAL SYNCHRONIZATION SYSTEM</p>
+                </div>
+            </div>
+
+            <!-- 右側連線狀態與工具 -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- 連線模式指示器 -->
+                <button id="toggleModeBtn" onclick="openGasModal()" title="點擊設定 GAS Web App /exec 網址或切換連線模式" class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-tactical-panel border border-tactical-accent/30 hover:border-tactical-cyan/60 transition text-xs font-mono">
+                    <span id="connStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="connModeLabel" class="text-tactical-text">檢測端點中...</span>
+                </button>
+
+                <!-- GAS 後端設定與腳本檢視按鈕 -->
+                <button onclick="openGasModal()" class="px-2.5 py-1.5 rounded-lg bg-tactical-panel/70 hover:bg-tactical-panel border border-tactical-accent/25 hover:border-tactical-accent text-xs font-mono text-tactical-accent transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    <span class="hidden md:inline">API / GAS 後端設定</span>
+                </button>
+
+                <!-- 離開房間按鈕 (僅在房間內顯示) -->
+                <button id="leaveRoomBtn" onclick="leaveRoom()" class="hidden px-2.5 py-1.5 rounded-lg bg-red-950/50 hover:bg-red-900/60 border border-red-500/40 text-xs font-mono text-red-300 transition">
+                    撤離房間
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 全域提示訊息 Toast 容器 (取代 alert) -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- 主內容區 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+        <!-- ==================== 畫面一：入口大廳 (LOBBY VIEW) ==================== -->
+        <section id="lobbyView" class="max-w-4xl mx-auto">
+            <!-- 標題區與視覺留白 -->
+            <div class="text-center mb-10 sm:mb-14 space-y-3">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-tactical-panel border border-tactical-accent/30 text-xs font-mono text-tactical-cyan mb-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-tactical-cyan"></span>
+                    CHANNEL ROUTING &amp; NEURAL SYNC
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-bold text-white tracking-tight">建立或接入戰術頻道</h2>
+                <p class="text-sm sm:text-base text-tactical-muted max-w-xl mx-auto leading-relaxed">
+                    輸入您的行動代號，建立專屬房間代碼或加入指定小隊。當房主下達開牌指令時，所有終端將同步觸發 3D 翻牌驗證默契程度。
+                </p>
+            </div>
+
+            <!-- 步驟 1：玩家代號設定 -->
+            <div class="tactical-panel rounded-2xl p-6 sm:p-8 mb-8 max-w-xl mx-auto">
+                <label for="playerNameInput" class="block text-xs font-mono uppercase tracking-wider text-tactical-accent mb-2">
+                    01 // 行動代號 (OPERATIVE CALLSIGN)
+                </label>
+                <div class="relative">
+                    <input type="text" id="playerNameInput" maxlength="16" placeholder="例如：夜鷹、Ghost、07號探員..." 
+                        class="tactical-input w-full rounded-xl px-4 py-3.5 text-base font-medium placeholder:text-tactical-muted/50">
+                    <button type="button" onclick="generateRandomCallsign()" title="隨機產生戰術代號" 
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1.5 rounded-lg bg-tactical-panel hover:bg-tactical-accent/20 border border-tactical-accent/30 text-xs font-mono text-tactical-cyan transition">
+                        隨機代號
+                    </button>
+                </div>
+            </div>
+
+            <!-- 步驟 2：分流選擇 (建立房間 vs 加入房間) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                
+                <!-- 左側卡片：房主建立戰術房間 -->
+                <div class="tactical-panel rounded-2xl p-6 sm:p-8 flex flex-col justify-between hover:border-tactical-accent/60 transition duration-300">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-xs font-mono px-2.5 py-1 rounded bg-tactical-accent/15 text-tactical-cyan border border-tactical-accent/30">
+                                HOST PROTOCOL
+                            </span>
+                            <svg class="w-6 h-6 text-tactical-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">建立戰術房間</h3>
+                        <p class="text-sm text-tactical-muted leading-relaxed mb-5">
+                            可自訂或自動產生 5 碼專屬房間號碼。您將擔任指揮官負責出題、監控成員鎖定狀態並控制全場開牌時機。
+                        </p>
+
+                        <!-- 房主自訂或自動房號設定 -->
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label for="customHostRoomCodeInput" class="text-xs font-mono uppercase tracking-wider text-tactical-accent">
+                                    自訂房號 (選填，留空則自動產生)
+                                </label>
+                                <button type="button" onclick="prefillRandomHostRoomCode()" class="text-[11px] font-mono text-tactical-cyan hover:underline">
+                                    隨機產生 5 碼
+                                </button>
+                            </div>
+                            <input type="text" id="customHostRoomCodeInput" maxlength="8" placeholder="留空自動產生 (例如：ALPHA)" 
+                                class="tactical-input w-full rounded-xl px-4 py-2.5 text-sm font-mono uppercase tracking-widest placeholder:text-xs placeholder:tracking-normal placeholder:font-sans placeholder:text-tactical-muted/50">
+                        </div>
+
+                        <!-- 隱身房主開關 -->
+                        <div class="p-4 rounded-xl bg-tactical-bg/80 border border-tactical-accent/25 mb-6">
+                            <label class="flex items-start gap-3 cursor-pointer select-none">
+                                <div class="relative flex items-center mt-0.5">
+                                    <input type="checkbox" id="stealthHostCheckbox" class="sr-only peer">
+                                    <div class="w-10 h-5 bg-tactical-panel rounded-full border border-tactical-accent/40 peer-checked:bg-tactical-accent/30 peer-checked:border-tactical-cyan transition"></div>
+                                    <div class="w-3.5 h-3.5 bg-tactical-muted rounded-full absolute left-1 transition-all peer-checked:translate-x-4 peer-checked:bg-tactical-cyan"></div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-semibold text-white">隱身房主模式</span>
+                                        <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-tactical-cyan/10 text-tactical-cyan border border-tactical-cyan/30">STEALTH HOST</span>
+                                    </div>
+                                    <p class="text-xs text-tactical-muted mt-1 leading-relaxed">
+                                        開啟後，房主僅負責出題與控場，不會出現在下方卡牌陣列中，也不需填寫答案（適合主持人/老師帶活動）。
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button id="createRoomBtn" onclick="handleCreateRoom()" 
+                        class="w-full py-3.5 px-5 rounded-xl bg-tactical-accent hover:bg-tactical-cyan text-tactical-bg font-bold tracking-wide transition duration-200 shadow-[0_0_20px_rgba(69,162,158,0.3)] flex items-center justify-center gap-2">
+                        <span>產生房號並建立頻道</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 右側卡片：輸入房號加入分組 -->
+                <div class="tactical-panel rounded-2xl p-6 sm:p-8 flex flex-col justify-between hover:border-tactical-accent/60 transition duration-300">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-xs font-mono px-2.5 py-1 rounded bg-tactical-panelLight text-tactical-text border border-tactical-accent/25">
+                                SQUAD JOIN
+                            </span>
+                            <svg class="w-6 h-6 text-tactical-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">輸入代碼加入分組</h3>
+                        <p class="text-sm text-tactical-muted leading-relaxed mb-6">
+                            向房主取得 4~6 碼房間識別代碼，輸入後即可進入對應分組頻道同步接收題目。
+                        </p>
+
+                        <div class="mb-6">
+                            <label for="roomCodeInput" class="block text-xs font-mono uppercase tracking-wider text-tactical-accent mb-2">
+                                房間代碼 (ROOM CODE)
+                            </label>
+                            <input type="text" id="roomCodeInput" maxlength="8" placeholder="例如：OP-482" 
+                                class="tactical-input w-full rounded-xl px-4 py-3.5 text-center text-xl font-mono font-bold tracking-[0.25em] uppercase placeholder:text-sm placeholder:tracking-normal placeholder:font-normal placeholder:text-tactical-muted/50">
+                        </div>
+                    </div>
+
+                    <button id="joinRoomBtn" onclick="handleJoinRoom()" 
+                        class="w-full py-3.5 px-5 rounded-xl bg-tactical-panelLight hover:bg-tactical-accent/20 text-tactical-cyan border border-tactical-accent/60 font-bold tracking-wide transition duration-200 flex items-center justify-center gap-2">
+                        <span>接入指定房間</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 16l-4-4m0 0l4-4m-4 4h14" />
+                        </svg>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================== 畫面二：遊戲戰術作戰室 (ROOM VIEW) ==================== -->
+        <section id="roomView" class="hidden space-y-8">
+            
+            <!-- 頂部房間資訊與狀態列 -->
+            <div class="tactical-panel rounded-2xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+                    <!-- 房間代碼顯示與複製 -->
+                    <div>
+                        <div class="text-[11px] font-mono text-tactical-muted uppercase tracking-wider">ACTIVE CHANNEL CODE</div>
+                        <div class="flex items-center gap-2.5 mt-0.5">
+                            <span id="displayRoomCode" class="text-2xl sm:text-3xl font-mono font-bold text-tactical-cyan tracking-widest">------</span>
+                            <button onclick="copyRoomCode()" title="複製房間代碼與邀請連結" class="p-2 rounded-lg bg-tactical-bg hover:bg-tactical-accent/20 border border-tactical-accent/30 text-tactical-accent hover:text-tactical-cyan transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="h-10 w-px bg-tactical-accent/20 hidden sm:block"></div>
+
+                    <!-- 個人身份徽章 -->
+                    <div>
+                        <div class="text-[11px] font-mono text-tactical-muted uppercase tracking-wider">OPERATIVE</div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span id="displayPlayerName" class="text-base font-bold text-white">---</span>
+                            <span id="roleBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-tactical-accent/20 text-tactical-cyan border border-tactical-accent/40">
+                                AGENT
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側輪詢狀態與手動同步 -->
+                <div class="flex flex-wrap items-center gap-3 justify-between lg:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-tactical-accent/15">
+                    <div class="flex items-center gap-2 text-xs font-mono text-tactical-muted">
+                        <span id="pollingPulse" class="w-2 h-2 rounded-full bg-tactical-accent"></span>
+                        <span id="syncStatusText">輪詢待命 (2.5s)</span>
+                    </div>
+                    <button onclick="manualSync()" class="px-3 py-1.5 rounded-lg bg-tactical-bg hover:bg-tactical-panelLight border border-tactical-accent/30 text-xs font-mono text-tactical-text hover:text-tactical-cyan transition flex items-center gap-1.5">
+                        <svg id="syncIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>立即同步</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 房主專屬指揮官控制台 (僅房主可見) -->
+            <div id="hostControlPanel" class="hidden tactical-panel tactical-panel-glow rounded-2xl p-6 sm:p-7 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-tactical-accent/20 pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-tactical-cyan rotate-45"></span>
+                        <h3 class="text-base sm:text-lg font-bold text-white tracking-wide">指揮官控制台 // COMMAND CONSOLE</h3>
+                    </div>
+                    <span id="stealthHostIndicator" class="hidden text-xs font-mono px-2.5 py-1 rounded bg-tactical-cyan/15 text-tactical-cyan border border-tactical-cyan/40">
+                        ● 隱身房主作用中 (不參與卡牌列隊)
+                    </span>
+                </div>
+
+                <!-- 出題輸入與快速題庫 -->
+                <div class="space-y-3">
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="text" id="hostQuestionInput" placeholder="輸入本回合心電感應題目（例如：提到『紅色』第一個想到的食物？）" 
+                            class="tactical-input flex-1 rounded-xl px-4 py-3 text-sm sm:text-base">
+                        <button onclick="publishQuestion()" class="px-6 py-3 rounded-xl bg-tactical-panelLight hover:bg-tactical-accent hover:text-tactical-bg text-tactical-cyan border border-tactical-accent font-bold text-sm tracking-wide transition whitespace-nowrap">
+                            發布題目
+                        </button>
+                    </div>
+
+                    <!-- 快速範本按鈕 -->
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <span class="text-[11px] font-mono text-tactical-muted">快速題庫：</span>
+                        <button type="button" onclick="fillSampleQuestion('說到『夏天』第一個想到的消暑食物？')" class="text-xs px-2.5 py-1 rounded-md bg-tactical-bg hover:bg-tactical-accent/15 border border-tactical-accent/25 text-tactical-text transition">夏天消暑食物</button>
+                        <button type="button" onclick="fillSampleQuestion('如果只能帶一樣東西去無人島，你會帶什麼？')" class="text-xs px-2.5 py-1 rounded-md bg-tactical-bg hover:bg-tactical-accent/15 border border-tactical-accent/25 text-tactical-text transition">無人島必帶物品</button>
+                        <button type="button" onclick="fillSampleQuestion('便利商店最神級的飲料是哪一款？')" class="text-xs px-2.5 py-1 rounded-md bg-tactical-bg hover:bg-tactical-accent/15 border border-tactical-accent/25 text-tactical-text transition">超商神級飲料</button>
+                        <button type="button" onclick="fillSampleQuestion('用兩個字形容我們這個團隊的默契！')" class="text-xs px-2.5 py-1 rounded-md bg-tactical-bg hover:bg-tactical-accent/15 border border-tactical-accent/25 text-tactical-text transition">團隊默契兩字</button>
+                    </div>
+                </div>
+
+                <!-- 開牌與重置操作列 -->
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-tactical-accent/15">
+                    <div class="text-xs font-mono text-tactical-muted">
+                        目前作答進度：<span id="hostProgressStats" class="text-tactical-cyan font-bold">0 / 0 已鎖定</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="resetRound()" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-tactical-bg hover:bg-tactical-panelLight border border-tactical-accent/35 text-xs sm:text-sm font-mono text-tactical-text hover:text-white transition">
+                            重置回合 (下一題)
+                        </button>
+                        <button id="revealCardsBtn" onclick="triggerRevealAll()" class="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-tactical-cyan hover:bg-white text-tactical-bg font-bold text-xs sm:text-sm tracking-wider transition shadow-[0_0_20px_rgba(102,252,241,0.35)] flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span>執行全體開牌 (REVEAL)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 當前題目顯示看板 -->
+            <div class="tactical-panel rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-tactical-bg border border-tactical-accent/30 text-[11px] font-mono text-tactical-accent mb-3">
+                    <span id="phaseBadgeDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="phaseBadgeText">PHASE // 等待填答中 (ANSWERING)</span>
+                </div>
+                <h2 id="currentQuestionDisplay" class="text-xl sm:text-3xl font-bold text-white tracking-wide leading-snug max-w-3xl mx-auto">
+                    等待房主發布題目...
+                </h2>
+
+                <!-- 開牌後顯示：心電感應同步率分析橫幅 -->
+                <div id="telepathyResultBanner" class="hidden mt-6 pt-5 border-t border-tactical-accent/25 max-w-2xl mx-auto">
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+                        <div>
+                            <div class="text-[11px] font-mono text-tactical-muted uppercase">NEURAL SYNC RATE // 心電感應同步率</div>
+                            <div id="syncRateValue" class="text-3xl font-mono font-bold text-tactical-cyan mt-0.5">0%</div>
+                        </div>
+                        <div class="h-8 w-px bg-tactical-accent/20 hidden sm:block"></div>
+                        <div>
+                            <div class="text-[11px] font-mono text-tactical-muted uppercase">TOP RESONANCE // 最高共鳴答案</div>
+                            <div id="topAnswerText" class="text-lg font-bold text-white mt-0.5">---</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+    <!-- ==================== API / GAS 後端設定與腳本檢視彈窗 ==================== -->
+    <div id="gasModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="tactical-panel rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border-tactical-accent/50">
+            <div class="p-5 border-b border-tactical-accent/25 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-white">API / GAS 後端設定與 Code.gs 部署指南</h3>
+                    <p class="text-xs font-mono text-tactical-muted mt-0.5">工作表名稱：TelepathyData | 支援多房間分流與全體同步翻牌</p>
+                </div>
+                <button onclick="closeGasModal()" class="p-2 rounded-lg hover:bg-tactical-bg text-tactical-muted hover:text-white transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-5 text-sm">
+                <!-- 動態 API Endpoint 設定區塊 -->
+                <div class="p-4 rounded-xl bg-tactical-bg/90 border border-tactical-accent/35 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <label for="gasUrlConfigInput" class="text-xs font-mono uppercase tracking-wider text-tactical-cyan font-bold">
+                            GAS_API_URL 端點設定 (支援直接貼上部署後的 /exec 網址)
+                        </label>
+                        <span id="modalEndpointBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                            本機模擬同步模式
+                        </span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2.5">
+                        <input type="text" id="gasUrlConfigInput" placeholder="https://script.google.com/macros/s/.../exec"
+                            class="tactical-input flex-1 rounded-xl px-3.5 py-2.5 text-xs font-mono">
+                        <button onclick="saveCustomGasUrl()" class="px-4 py-2.5 rounded-xl bg-tactical-accent hover:bg-tactical-cyan text-tactical-bg font-bold text-xs tracking-wide transition whitespace-nowrap">
+                            套用並連線測試
+                        </button>
+                    </div>
+                    <p id="gasUrlHelperHint" class="text-xs text-tactical-muted leading-relaxed">
+                        偵測到目前網址為 Google 試算表編輯連結，系統已自動啟用「本機多開模擬同步模式（支援同瀏覽器開多個分頁即時同步）」。若需跨裝置多人連線，請在試算表「擴充功能 &gt; Apps Script」部署下方程式碼，並將產生的 <code class="text-tactical-cyan">/exec</code> 網址貼回上方即可！
+                    </p>
+                </div>
+
+                <!-- Code.gs 程式碼檢視 -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono uppercase tracking-wider text-tactical-accent">Code.gs // Google Apps Script 後端完整程式碼</span>
+                        <button onclick="copyGasCode()" class="px-3 py-1.5 rounded-lg bg-tactical-panelLight hover:bg-tactical-accent hover:text-tactical-bg text-tactical-cyan border border-tactical-accent/40 font-bold text-xs transition">
+                            複製 Code.gs
+                        </button>
+                    </div>
+                    <pre id="gasCodeBlock" class="bg-tactical-bg p-4 rounded-xl border border-tactical-accent/30 text-xs font-mono text-tactical-cyan overflow-x-auto leading-relaxed">const SHEET_NAME = 'TelepathyData';
+
+function doGet(e) {
+  return handleRequest(e);
+}
+
+function doPost(e) {
+  return handleRequest(e);
+}
+
+function handleRequest(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+      sheet.appendRow(['RoomCode', 'PlayerId', 'PlayerName', 'IsHost', 'IsStealthHost', 'Question', 'Answer', 'Status', 'UpdatedAt']);
+    }
+
+    let params = e.parameter || {};
+    if (e.postData && e.postData.contents) {
+      try {
+        const body = JSON.parse(e.postData.contents);
+        params = Object.assign(params, body);
+      } catch (err) {}
+    }
+
+    const action = params.action || 'sync';
+    const roomCode = String(params.roomCode || '').toUpperCase().trim();
+    const now = new Date().toISOString();
+    const data = sheet.getDataRange().getValues();
+
+    if (action === 'join' || action === 'answer') {
+      let foundRow = -1;
+      let currentQuestion = '等待房主發布題目...';
+      let currentStatus = 'ANSWERING';
+
+      for (let i = 1; i &lt; data.length; i++) {
+        if (String(data[i][0]).toUpperCase() === roomCode) {
+          if (data[i][5]) currentQuestion = data[i][5];
+          if (data[i][7]) currentStatus = data[i][7];
+          if (String(data[i][1]) === String(params.playerId)) {
+            foundRow = i + 1;
+          }
+        }
+      }
+
+      const rowValues = [
+        roomCode,
+        params.playerId,
+        params.playerName,
+        params.isHost === true || params.isHost === 'true',
+        params.isStealthHost === true || params.isStealthHost === 'true',
+        params.question !== undefined ? params.question : currentQuestion,
+        params.answer !== undefined ? params.answer : '',
+        params.status || currentStatus,
+        now
+      ];
+
+      if (foundRow &gt; 0) {
+        if (action === 'join') {
+          rowValues[6] = data[foundRow - 1][6];
+        }
+        sheet.getRange(foundRow, 1, 1, 9).setValues([rowValues]);
+      } else {
+        sheet.appendRow(rowValues);
+      }
+    } else if (action === 'setQuestion') {
+      for (let i = 1; i &lt; data.length; i++) {
+        if (String(data[i][0]).toUpperCase() === roomCode) {
+          sheet.getRange(i + 1, 6).setValue(params.question || '');
+          sheet.getRange(i + 1, 9).setValue(now);
+        }
+      }
+    } else if (action === 'reveal' || action === 'reset') {
+      const newStatus = action === 'reveal' ? 'REVEALED' : 'ANSWERING';
+      for (let i = 1; i &lt; data.length; i++) {
+        if (String(data[i][0]).toUpperCase() === roomCode) {
+          sheet.getRange(i + 1, 8).setValue(newStatus);
+          if (action === 'reset') {
+            sheet.getRange(i + 1, 7).setValue('');
+          }
+          sheet.getRange(i + 1, 9).setValue(now);
+        }
+      }
+    }
+
+    const updatedData = sheet.getDataRange().getValues();
+    const roomPlayers = [];
+    let roomQuestion = '等待房主發布題目...';
+    let roomStatus = 'ANSWERING';
+
+    for (let i = 1; i &lt; updatedData.length; i++) {
+      if (String(updatedData[i][0]).toUpperCase() === roomCode) {
+        if (updatedData[i][5]) roomQuestion = updatedData[i][5];
+        if (updatedData[i][7]) roomStatus = updatedData[i][7];
+        roomPlayers.push({
+          roomCode: updatedData[i][0],
+          playerId: updatedData[i][1],
+          playerName: updatedData[i][2],
+          isHost: updatedData[i][3] === true || updatedData[i][3] === 'true',
+          isStealthHost: updatedData[i][4] === true || updatedData[i][4] === 'true',
+          question: updatedData[i][5],
+          answer: updatedData[i][6],
+          status: updatedData[i][7],
+          updatedAt: updatedData[i][8]
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      roomCode: roomCode,
+      question: roomQuestion,
+      status: roomStatus,
+      players: roomPlayers
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 核心 JavaScript 邏輯 ==================== -->
+    <script>
+        /**
+         * 系統核心常數設定 (依照需求指定)
+         */
+        const SHEET_NAME = 'TelepathyData';
+        const GAS_API_URL = "https://docs.google.com/spreadsheets/d/1WBfngnbCamQnltrmkdr_HSvKlV4yULE7FbD_ea43SnU/edit?usp=sharing";
+        const POLLING_INTERVAL_MS = 2500;
+
+        /**
+         * 判斷網址是否為合法部署的 GAS Web App (/exec) 端點
+         */
+        function isValidGasExecUrl(url) {
+            if (!url || typeof url !== 'string') return false;
+            const trimmed = url.trim();
+            return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(\?.*)?$/i.test(trimmed);
+        }
+
+        /**
+         * 應用程式全域狀態
+         */
+        const savedCustomUrl = localStorage.getItem('telepathy_custom_gas_url') || '';
+        const initialActiveUrl = isValidGasExecUrl(savedCustomUrl) ? savedCustomUrl : GAS_API_URL;
+
+        const state = {
+            activeGasUrl: initialActiveUrl,
+            useLocalDemoMode: !isValidGasExecUrl(initialActiveUrl),
+            roomCode: '',
+            playerId: '',
+            playerName: '',
+            isHost: false,
+            isStealthHost: false,
+            question: '等待房主發布題目...',
+            status: 'ANSWERING', // 'ANSWERING' | 'REVEALED'
+            players: [],
+            pollingTimer: null,
+            broadcastChannel: null,
+            isSyncing: false,
+            lastRenderedSignature: ''
+        };
+
+        /**
+         * 初始化：檢查 GAS 端點有效性、建立 BroadcastChannel 多分頁即時通道、檢查 URL ?room= 參數
+         */
+        window.addEventListener('DOMContentLoaded', () => {
+            updateConnBadgeUI();
+            const urlInput = document.getElementById('gasUrlConfigInput');
+            if (urlInput) urlInput.value = state.activeGasUrl;
+
+            // 生成獨立的瀏覽器分頁/裝置識別碼
+            let storedId = sessionStorage.getItem('telepathy_player_id');
+            if (!storedId) {
+                storedId = 'OP-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                sessionStorage.setItem('telepathy_player_id', storedId);
+            }
+            state.playerId = storedId;
+
+            // 建立 BroadcastChannel 讓同瀏覽器多分頁在本機模式下毫秒級即時同步
+            if ('BroadcastChannel' in window) {
+                state.broadcastChannel = new BroadcastChannel('cloud_telepathy_sync');
+                state.broadcastChannel.onmessage = (event) => {
+                    if (state.useLocalDemoMode && event.data && event.data.roomCode === state.roomCode) {
+                        syncRoomState(false);
+                    }
+                };
+            }
+
+            // 檢查 URL 參數自動填入房號
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomParam = urlParams.get('room');
+            if (roomParam) {
+                document.getElementById('roomCodeInput').value = roomParam.toUpperCase();
+                showToast(`偵測到邀請頻道代碼：${roomParam.toUpperCase()}，請輸入代號後加入`, 'info');
+            }
+
+            // 支援 Enter 鍵送出答案與題目
+            document.getElementById('myAnswerInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') submitMyAnswer();
+            });
+            document.getElementById('hostQuestionInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') publishQuestion();
+            });
+        });
+
+        /**
+         * 儲存並套用使用者自訂的 GAS Web App /exec 網址
+         */
+        function saveCustomGasUrl() {
+            const inputEl = document.getElementById('gasUrlConfigInput');
+            const newUrl = inputEl.value.trim();
+
+            if (!newUrl) {
+                localStorage.removeItem('telepathy_custom_gas_url');
+                state.activeGasUrl = GAS_API_URL;
+                state.useLocalDemoMode = !isValidGasExecUrl(GAS_API_URL);
+                updateConnBadgeUI();
+                showToast('已重設為預設端點設定', 'info');
+                return;
+            }
+
+            state.activeGasUrl = newUrl;
+            localStorage.setItem('telepathy_custom_gas_url', newUrl);
+
+            if (isValidGasExecUrl(newUrl)) {
+                state.useLocalDemoMode = false;
+                updateConnBadgeUI();
+                showToast('已偵測到有效 GAS /exec 端點，切換至雲端同步模式！', 'success');
+                if (state.roomCode) manualSync();
+            } else {
+                state.useLocalDemoMode = true;
+                updateConnBadgeUI();
+                showToast('此網址非 /exec 部署端點，維持「本機多開模擬同步模式」', 'warning');
+            }
+        }
+
+        function prefillRandomHostRoomCode() {
+            document.getElementById('customHostRoomCodeInput').value = generateRoomCode();
+        }
+
+        /**
+         * 切換 GAS 雲端連線模式 與 本機多開測試模式
+         */
+        function toggleConnectionMode() {
+            state.useLocalDemoMode = !state.useLocalDemoMode;
+            const label = document.getElementById('connModeLabel');
+            const dot = document.getElementById('connStatusDot');
+
+            if (state.useLocalDemoMode) {
+                label.textContent = '本機多開測試模式';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+                showToast('已切換至「本機多開測試模式」（支援同瀏覽器開多個分頁同步測試）', 'warning');
+            } else {
+                label.textContent = 'GAS 雲端連線';
+                dot.className = 'w-2 h-2 rounded-full bg-tactical-cyan animate-pulse';
+                showToast('已切換至「GAS 雲端連線模式」', 'success');
+            }
+
+            if (state.roomCode) {
+                manualSync();
+            }
+        }
+
+        /**
+         * 隨機產生酷炫戰術代號
+         */
+        function generateRandomCallsign() {
+            const prefixes = ['夜鷹', '獵隼', '幽靈', '暗影', '零號', '極光', '星塵', '銀狐', '寒霜', '雷霆'];
+            const suffix = Math.floor(10 + Math.random() * 89);
+            const randomName = prefixes[Math.floor(Math.random() * prefixes.length)] + '-' + suffix;
+            document.getElementById('playerNameInput').value = randomName;
+        }
+
+        /**
+         * 產生 5 碼大寫英數房間代碼
+         */
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 5; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        /**
+         * 房主建立房間流程
+         */
+        async function handleCreateRoom() {
+            const nameInput = document.getElementById('playerNameInput').value.trim();
+            if (!nameInput) {
+                showToast('請先輸入您的行動代號！', 'warning');
+                document.getElementById('playerNameInput').focus();
+                return;
+            }
+
+            const customCodeRaw = document.getElementById('customHostRoomCodeInput').value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            const newRoomCode = customCodeRaw.length >= 3 ? customCodeRaw : generateRoomCode();
+            const isStealth = document.getElementById('stealthHostCheckbox').checked;
+
+            state.playerName = nameInput;
+            state.roomCode = newRoomCode;
+            state.isHost = true;
+            state.isStealthHost = isStealth;
+            state.question = '等待房主發布題目...';
+            state.status = 'ANSWERING';
+
+            setButtonLoading('createRoomBtn', true, '建立頻道中...');
+            try {
+                await apiRequest('join', {
+                    question: state.question,
+                    answer: '',
+                    status: 'ANSWERING'
+                });
+                enterRoomUI();
+                showToast(`已建立戰術頻道 ${newRoomCode}${isStealth ? '（隱身房主模式）' : ''}`, 'success');
+            } catch (err) {
+                showToast('雲端連線異常，已自動切換至本機多開模擬模式建立房間', 'warning');
+                state.useLocalDemoMode = true;
+                updateConnBadgeUI();
+                await apiRequest('join', { question: state.question, answer: '', status: 'ANSWERING' });
+                enterRoomUI();
+            } finally {
+                setButtonLoading('createRoomBtn', false, '產生房號並建立頻道');
+            }
+        }
+
+        /**
+         * 資料存取層：支援 Google Apps Script Fetch (GET/POST text/plain) 與 LocalStorage + BroadcastChannel 多分頁測試
+         */
+        async function apiRequest(action, extraPayload = {}) {
+            const payload = {
+                action: action,
+                sheetName: SHEET_NAME,
+                roomCode: state.roomCode,
+                playerId: state.playerId,
+                playerName: state.playerName,
+                isHost: state.isHost,
+                isStealthHost: state.isStealthHost,
+                ...extraPayload
+            };
+
+            // 若 GAS_API_URL 仍為試算表編輯網址或無效 /exec，使用本機多開模擬同步模式
+            if (state.useLocalDemoMode || !isValidGasExecUrl(state.activeGasUrl)) {
+                return handleLocalStorageMock(payload);
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                let response;
+                if (action === 'sync') {
+                    const url = new URL(state.activeGasUrl);
+                    url.searchParams.append('action', 'sync');
+                    url.searchParams.append('sheetName', SHEET_NAME);
+                    url.searchParams.append('roomCode', state.roomCode);
+                    response = await fetch(url.toString(), {
+                        method: 'GET',
+                        signal: controller.signal
+                    });
+                } else {
+                    // 使用 text/plain 避開 GAS CORS OPTIONS Preflight 限制
+                    response = await fetch(state.activeGasUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify(payload),
+                        signal: controller.signal
+                    });
+                }
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        }
+
+        /**
+         * 本機多開模擬資料庫 (支援同瀏覽器多分頁透過 localStorage + BroadcastChannel 即時連動)
+         */
+        function handleLocalStorageMock(payload) {
+            const storageKey = `telepathy_mock_${payload.roomCode}`;
+            let roomData = JSON.parse(localStorage.getItem(storageKey) || 'null');
+
+            if (!roomData) {
+                roomData = {
+                    roomCode: payload.roomCode,
+                    question: payload.question || '等待房主發布題目...',
+                    status: 'ANSWERING',
+                    players: []
+                };
+            }
+
+            const idx = roomData.players.findIndex(p => p.playerId === payload.playerId);
+            let mutated = false;
+
+            if (payload.action === 'join') {
+                if (idx === -1) {
+                    roomData.players.push({
+                        roomCode: payload.roomCode,
+                        playerId: payload.playerId,
+                        playerName: payload.playerName,
+                        isHost: payload.isHost,
+                        isStealthHost: payload.isStealthHost,
+                        answer: '',
+                        status: roomData.status
+                    });
+                } else {
+                    roomData.players[idx].playerName = payload.playerName;
+                    roomData.players[idx].isHost = payload.isHost;
+                    roomData.players[idx].isStealthHost = payload.isStealthHost;
+                }
+                mutated = true;
+            } else if (payload.action === 'setQuestion') {
+                roomData.question = payload.question;
+                mutated = true;
+            } else if (payload.action === 'answer') {
+                if (idx !== -1) {
+                    roomData.players[idx].answer = payload.answer;
+                    mutated = true;
+                }
+            } else if (payload.action === 'reveal') {
+                roomData.status = 'REVEALED';
+                mutated = true;
+            } else if (payload.action === 'reset') {
+                roomData.status = 'ANSWERING';
+                roomData.players.forEach(p => p.answer = '');
+                mutated = true;
+            }
+
+            if (mutated) {
+                localStorage.setItem(storageKey, JSON.stringify(roomData));
+                if (state.broadcastChannel) {
+                    state.broadcastChannel.postMessage({ roomCode: payload.roomCode, action: payload.action });
+                }
+            }
+
+            return Promise.resolve({
+                ok: true,
+                roomCode: roomData.roomCode,
+                question: roomData.question,
+                status: roomData.status,
+                players: roomData.players
+            });
+        }
+
+        /**
+         * 複製房號與專屬邀請網址 (使用 execCommand 相容 iFrame 環境)
+         */
+        function copyRoomCode() {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?room=${state.roomCode}`;
+            const textToCopy = `加入我的《雲端心電感應》戰術頻道！房間代碼：${state.roomCode}\n快速連結：${shareUrl}`;
+
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = textToCopy;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            try {
+                document.execCommand('copy');
+                showToast(`已複製房間代碼「${state.roomCode}」與邀請連結！`, 'success');
+            } catch (err) {
+                showToast(`房間代碼：${state.roomCode}`, 'info');
+            }
+            document.body.removeChild(tempTextarea);
+        }
+
+        /**
+         * GAS 程式碼檢視彈窗控制
+         */
+        function openGasModal() {
+            document.getElementById('gasModal').classList.remove('hidden');
+        }
+
+        function closeGasModal() {
+            document.getElementById('gasModal').classList.add('hidden');
+        }
+
+        function copyGasCode() {
+            const codeText = document.getElementById('gasCodeBlock').textContent;
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = codeText;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('已複製 Google Apps Script 後端程式碼！', 'success');
+            } catch (err) {
+                showToast('複製失敗，請手動選取複製', 'warning');
+            }
+            document.body.removeChild(tempTextarea);
+        }
+
+        /**
+         * 輔助工具函式
+         */
+        function updateConnBadgeUI() {
+            const label = document.getElementById('connModeLabel');
+            const dot = document.getElementById('connStatusDot');
+            const modalBadge = document.getElementById('modalEndpointBadge');
+
+            if (state.useLocalDemoMode) {
+                label.textContent = '本機多開模擬同步模式';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+                if (modalBadge) {
+                    modalBadge.textContent = '本機多開模擬同步 (LocalStorage + BroadcastChannel)';
+                    modalBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                }
+            } else {
+                label.textContent = 'GAS 雲端同步連線';
+                dot.className = 'w-2 h-2 rounded-full bg-tactical-cyan animate-pulse';
+                if (modalBadge) {
+                    modalBadge.textContent = 'GAS 雲端 /exec 已連線';
+                    modalBadge.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-tactical-cyan/15 text-tactical-cyan border border-tactical-cyan/40';
+                }
+            }
+        }
+
+        function setButtonLoading(btnId, isLoading, text) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.disabled = isLoading;
+            const span = btn.querySelector('span');
+            if (span) span.textContent = text;
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
